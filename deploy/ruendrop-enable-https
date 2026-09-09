@@ -1,0 +1,30 @@
+#!/bin/sh
+# Bootstrap helper for deployments that had no pre-existing HTTPS virtual host.
+# The pending virtual host must have been reviewed before running this helper.
+set -eu
+[ "$(id -u)" -eq 0 ] || { echo 'Run with sudo.' >&2; exit 1; }
+set -a
+. /etc/ruendrop/app.env
+set +a
+RUENDROP_DOMAIN=${RUENDROP_ORIGIN#https://}
+case "$RUENDROP_DOMAIN" in ''|*[!a-zA-Z0-9.-]*) echo 'Invalid HTTPS domain' >&2; exit 1;; esac
+nginx -t
+RUENDROP_BACKUP=/root/ruendrop-https-backup-$(date -u +%Y%m%dT%H%M%SZ)
+umask 077
+mkdir "$RUENDROP_BACKUP"
+cp -a /etc/nginx /etc/letsencrypt "$RUENDROP_BACKUP/"
+certbot certonly --webroot -w /var/www/html -d "$RUENDROP_DOMAIN" --non-interactive --agree-tos --register-unsafely-without-email
+openssl x509 -in "/etc/letsencrypt/live/$RUENDROP_DOMAIN/fullchain.pem" -checkend 86400 -noout
+install -m 644 /etc/nginx/sites-available/ruendrop-https.pending /etc/nginx/sites-available/ruendrop-https
+ln -sf /etc/nginx/sites-available/ruendrop-https /etc/nginx/sites-enabled/ruendrop-https
+if ! nginx -t; then
+    unlink /etc/nginx/sites-enabled/ruendrop-https
+    echo "Validation failed. Backup: $RUENDROP_BACKUP" >&2
+    exit 1
+fi
+systemctl reload nginx
+install -d -m 755 /etc/letsencrypt/renewal-hooks/deploy
+printf '%s\n' '#!/bin/sh' '/usr/sbin/nginx -t && /bin/systemctl reload nginx' > /etc/letsencrypt/renewal-hooks/deploy/ruendrop-nginx
+chmod 755 /etc/letsencrypt/renewal-hooks/deploy/ruendrop-nginx
+curl --fail --silent --show-error "$RUENDROP_ORIGIN/drop/" >/dev/null
+echo 'RuenDrop HTTPS is ready.'

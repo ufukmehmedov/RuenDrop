@@ -12,3 +12,5 @@
 Keep `/var/lib/ruendrop` out of backup jobs. Store production backups/configuration outside this public repository. For rollback, restore the backed-up Nginx configuration, validate and reload it, then stop/disable only RuenDrop's units. Preserve other services and firewall rules. Remove only newly added firewall rules if rolling back HTTPS.
 
 The default service has 192 MiB memory and half a CPU ceiling. Two synchronous Gunicorn workers have a 45-second request timeout. Data files are mode `0600`, directories `0700`, and systemd marks the data path non-executable. The source and venv are not writable by the service user.
+
+For a bootstrap deployment with no prior HTTPS host, `deploy/ruendrop-enable-https` can be installed root-owned in `/usr/local/sbin/` after reviewing the pending virtual-host configuration. Once upstream TCP 80/443 access is available, it backs up configuration, obtains a certificate, validates and enables the staged host, reloads Nginx, and installs a validated certificate-renewal reload hook. It never rotates the invite.
