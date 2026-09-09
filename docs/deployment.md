@@ -1,0 +1,14 @@
+# Deployment
+
+1. Inspect the operating system, existing listeners, Nginx virtual hosts, certificates, systemd units and firewall rules. Save timestamped root-only copies before changing configuration. Record existing service PIDs to verify they were not restarted.
+2. Install Python venv support and Nginx if absent. Create a dedicated system user `ruendrop` with no login shell; install source and its venv at `/opt/ruendrop`, owned by root. Install runtime requirements into that venv.
+3. Create `/var/lib/ruendrop` owned by `ruendrop`, mode `0700`. Create `/etc/ruendrop/app.env` using `.env.example`, owned by `root:ruendrop`, mode `0640`. Set the real HTTPS origin here; never commit the production file.
+4. Copy `deploy/ruendrop` to `/usr/local/bin/ruendrop` (root-owned, `0755`). Copy the service/timer templates to `/etc/systemd/system/`. Initialize the DB as the service user by running the cleanup module from `/opt/ruendrop`. Generate the first invite with `sudo ruendrop rotate-url` in a private terminal. The root recovery file is mode `0600` and inaccessible to the application.
+5. Run `systemd-analyze verify` on the three units before `systemctl daemon-reload`, then enable/start `ruendrop.service` and `ruendrop-cleanup.timer`.
+6. Include `deploy/nginx-drop.conf` inside the existing domain's HTTPS server block. Preserve every existing route. Reuse its valid certificate. If HTTPS is absent, provision a certificate and a dedicated vhost first. Use only TLS 1.2/1.3. Disable access/error request logging at the virtual-host level as well as the drop location. Apply sensible connection/request limits in the Nginx http context. HTTP port 80 may serve only ACME challenges and a redirect to HTTPS. Never proxy the application on HTTP.
+7. Run `nginx -t` before reloading. Allow TCP 443 through the host and upstream cloud firewall; port 80 is also needed for HTTP-01 certificate renewal. Never expose 8787. Certificate renewal may be scheduled; invite rotation must never be scheduled.
+8. Test HTTPS with normal certificate validation, run the browser checks, verify `ss -ltnp` shows only loopback for 8787, run the cleanup service, and compare existing service health/PIDs with the baseline.
+
+Keep `/var/lib/ruendrop` out of backup jobs. Store production backups/configuration outside this public repository. For rollback, restore the backed-up Nginx configuration, validate and reload it, then stop/disable only RuenDrop's units. Preserve other services and firewall rules. Remove only newly added firewall rules if rolling back HTTPS.
+
+The default service has 192 MiB memory and half a CPU ceiling. Two synchronous Gunicorn workers have a 45-second request timeout. Data files are mode `0600`, directories `0700`, and systemd marks the data path non-executable. The source and venv are not writable by the service user.

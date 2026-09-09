@@ -1,0 +1,35 @@
+[Unit]
+Description=RuenDrop encrypted temporary photo sharing
+After=network.target
+
+[Service]
+User=ruendrop
+Group=ruendrop
+WorkingDirectory=/opt/ruendrop
+EnvironmentFile=/etc/ruendrop/app.env
+ExecStart=/opt/ruendrop/.venv/bin/gunicorn --bind 127.0.0.1:8787 --workers 2 --worker-class sync --timeout 45 --graceful-timeout 15 --limit-request-line 1024 --limit-request-fields 30 --limit-request-field_size 2048 --error-logfile /dev/null ruendrop.wsgi:app
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/ruendrop
+InaccessiblePaths=/etc/ruendrop/invite
+NoExecPaths=/var/lib/ruendrop
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_INET AF_UNIX
+CapabilityBoundingSet=
+LockPersonality=true
+MemoryMax=192M
+CPUQuota=50%
+TasksMax=16
+LimitNOFILE=1024
+
+[Install]
+WantedBy=multi-user.target
