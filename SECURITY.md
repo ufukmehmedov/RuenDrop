@@ -13,3 +13,5 @@ Expiration denies every new read at the deadline; it cannot retract an already d
 Disk and egress budgets limit local resource usage; they are not an Oracle billing guarantee. Keep Oracle account monitoring enabled independently. No paid cloud resources are required.
 
 Never commit `.env`, invite recovery files, production DBs, ciphertext, server IPs, credentials, or private deployment state. Report security issues privately to the repository owner.
+
+Drop responses carry `X-Robots-Tag: noindex, nofollow, noarchive` and `Cache-Control: no-store`, including proxy errors and redirects. These are directives for compliant crawlers and caches, not access controls. No photo OpenGraph or social preview metadata is emitted. Root-authorized `sudo ruendrop revoke-drop DROP_ID` immediately removes the selected stored drop without transmitting its decryption key. Revocation cannot recall previously downloaded or in-flight content.

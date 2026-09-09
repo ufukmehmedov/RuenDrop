@@ -80,7 +80,7 @@ def test_real_admin_rotation(env,monkeypatch,capsys):
     app,c,root,token=env
     monkeypatch.setenv('RUENDROP_DATA',str(root))
     monkeypatch.setenv('RUENDROP_INVITE_FILE',str(root/'admin'/'invite'))
-    monkeypatch.setenv('RUENDROP_ADMIN_TEST','1')
+    monkeypatch.setattr('ruendrop.admin.os.geteuid',lambda:0)
     headers=authorize(c,token)
     payload=b'RD01'+secrets.token_bytes(60)
     pid=c.post('/drop/api/photos',data=payload,headers=headers).json['id']
@@ -106,3 +106,44 @@ def test_twenty_mib_drop_boundary(env):
     assert r.status_code==201
     assert c.get('/drop/api/photos/'+r.json['id']).data==payload
     assert c.post('/drop/api/photos',data=payload+b'x',headers=headers).status_code==413
+
+def test_revoke_drop(env,monkeypatch,capsys):
+    import sys
+    from ruendrop.admin import main
+    app,c,root,token=env
+    headers=authorize(c,token)
+    payload=b'RD01'+secrets.token_bytes(128)
+    ids=[c.post('/drop/api/photos',data=payload,headers=headers).json['id'] for _ in range(2)]
+    monkeypatch.setenv('RUENDROP_DATA',str(root))
+    monkeypatch.setattr(sys,'argv',['ruendrop','revoke-drop',ids[0]])
+    monkeypatch.setattr('ruendrop.admin.os.geteuid',lambda:1000)
+    monkeypatch.setenv('RUENDROP_ADMIN_TEST','1')
+    with pytest.raises(SystemExit,match='sudo'): main()
+    assert c.get('/drop/api/photos/'+ids[0]).status_code==200
+    monkeypatch.setattr('ruendrop.admin.os.geteuid',lambda:0)
+    main()
+    assert not (root/'data'/ids[0]).exists()
+    with connect(root/'ruendrop.db') as db:
+        assert not db.execute('SELECT 1 FROM photos WHERE id=?',(ids[0],)).fetchone()
+    for route in ('/drop/p/','/drop/api/photos/'):
+        response=c.get(route+ids[0])
+        assert response.status_code==404
+        assert response.headers['Cache-Control']=='no-store'
+        assert response.headers['X-Robots-Tag']=='noindex, nofollow, noarchive'
+    assert c.get('/drop/api/photos/'+ids[1]).data==payload
+    assert c.get('/drop/api/session').status_code==200
+    main()  # Safe to repeat.
+    monkeypatch.setattr(sys,'argv',['ruendrop','revoke-drop','../ruendrop.db'])
+    with pytest.raises(SystemExit): main()
+    assert (root/'ruendrop.db').exists()
+
+def test_privacy_headers(env):
+    _,c,_,token=env
+    for path in ('/drop/','/drop/p/'+'A'*43,'/drop/api/photos/'+'A'*43,'/drop/assets/logo.png'):
+        r=c.get(path)
+        assert r.headers['X-Robots-Tag']=='noindex, nofollow, noarchive'
+        assert r.headers['Cache-Control']=='no-store'
+    authorize(c,token)
+    r=c.get('/drop/')
+    assert r.headers['X-Robots-Tag']=='noindex, nofollow, noarchive'
+    assert b'og:' not in r.data and b'twitter:' not in r.data

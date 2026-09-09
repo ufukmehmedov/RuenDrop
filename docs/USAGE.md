@@ -152,3 +152,7 @@ The first two commands should report `active`, port 8787 should be loopback-only
 - Always run `nginx -t` before reloading Nginx.
 - Use `sudo ruendrop rotate-url` only when you intentionally want a new invite URL.
 - Photo content expires automatically after 24 hours.
+
+## Revoke a drop immediately
+
+On the server, run `sudo ruendrop revoke-drop DROP_ID`. Use only the 43-character ID after `/drop/p/`, excluding the `#` fragment and key. Server sudo/root authorization is required; an upload invite does not grant admin access. The command deletes that drop's ciphertext and database row, making its gallery and download return 404. Repeating it is safe. Other drops, invites and sessions are unaffected. Already downloaded or in-flight copies cannot be recalled.

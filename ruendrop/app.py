@@ -115,6 +115,7 @@ def create_app(config=None):
             'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'",
             'X-Content-Type-Options':'nosniff', 'Referrer-Policy':'no-referrer',
             'X-Frame-Options':'DENY', 'Cache-Control':'no-store',
+            'X-Robots-Tag':'noindex, nofollow, noarchive',
             'Permissions-Policy':'camera=(), microphone=(), geolocation=()'})
         return response
 
