@@ -97,3 +97,12 @@ def test_real_admin_rotation(env,monkeypatch,capsys):
     monkeypatch.setattr(sys,'argv',['ruendrop','show-url'])
     main()
     assert capsys.readouterr().out.strip()==url
+
+def test_twenty_mib_drop_boundary(env):
+    app,c,root,token=env
+    headers=authorize(c,token)
+    payload=b'RD01'+b'x'*(20*1024*1024-4)
+    r=c.post('/drop/api/photos',data=payload,headers=headers)
+    assert r.status_code==201
+    assert c.get('/drop/api/photos/'+r.json['id']).data==payload
+    assert c.post('/drop/api/photos',data=payload+b'x',headers=headers).status_code==413

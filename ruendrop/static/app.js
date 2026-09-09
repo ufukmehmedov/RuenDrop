@@ -1,14 +1,13 @@
-import {processPhoto,encryptPhoto} from './image.js';
+import {encryptDrop} from './image.js';
 import './auth.js';
 const status=document.querySelector('#status'), input=document.querySelector('#file'), progress=document.querySelector('progress');
 let busy=false;
-async function upload(file) {
-  if(!file || busy) return;
+async function upload(files) {
+  if(!files.length || busy) return;
   busy=true; input.disabled=true; document.querySelector('#result').hidden=true;
   try {
     status.textContent='Preparing photo…'; progress.hidden=false; progress.removeAttribute('value');
-    const photo=await processPhoto(file);
-    const {key,payload}=await encryptPhoto(photo);
+    const {key,payload}=await encryptDrop(Array.from(files),(i,n)=>{status.textContent=`Preparing photo ${i} of ${n}…`;});
     const session=await fetch('/drop/api/session');
     if(!session.ok) throw Error('Open your private invite link again.');
     const {csrf}=await session.json();
@@ -24,14 +23,14 @@ async function upload(file) {
     });
     const url=location.origin+'/drop/p/'+result.id+'#'+key;
     const link=document.querySelector('#share'); link.href=url; link.textContent=url;
-    document.querySelector('#result').hidden=false; status.textContent='Photo ready to share.';
+    document.querySelector('#result').hidden=false; status.textContent='Drop ready to share.';
   } catch(error) { status.textContent=error.message; }
   finally {busy=false; input.disabled=false; progress.hidden=true; input.value='';}
 }
-input.addEventListener('change',()=>upload(input.files[0]));
+input.addEventListener('change',()=>upload(input.files));
 const zone=document.querySelector('#zone');
 zone.addEventListener('dragover',e=>{e.preventDefault();});
-zone.addEventListener('drop',e=>{e.preventDefault();upload(e.dataTransfer.files[0]);});
+zone.addEventListener('drop',e=>{e.preventDefault();upload(e.dataTransfer.files);});
 document.querySelector('#copy').addEventListener('click',async()=>{
   try {await navigator.clipboard.writeText(document.querySelector('#share').href); status.textContent='Link copied.';}
   catch {status.textContent='Select and copy the link above.';}

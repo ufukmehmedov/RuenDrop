@@ -2,7 +2,7 @@
 
 Photo processing and encryption happen **in the browser**. The server cannot validate whether arbitrary authenticated ciphertext represents a photo without defeating end-to-end encryption. Photo-only enforcement applies to the supplied client; an authorized user with a modified client could submit other bounded ciphertext. The server validates the versioned envelope, session, CSRF token and byte/storage limits, never decrypts payloads, and never executes stored data.
 
-AES-256-GCM uses a new OS/browser CSPRNG key and 96-bit IV per photo, with the four-byte protocol version authenticated as additional data. The 128-bit authentication tag is produced by Web Crypto. Keys appear only in share fragments and browser memory. SQLite contains opaque IDs, byte counts, timestamps, hashes and CSRF tokens, not photo keys or plaintext.
+AES-256-GCM uses a new OS/browser CSPRNG key and 96-bit IV per drop, with the four-byte protocol version authenticated as additional data. The 128-bit authentication tag is produced by Web Crypto. Keys appear only in share fragments and browser memory. SQLite contains opaque IDs, byte counts, timestamps, hashes and CSRF tokens, not photo keys or plaintext.
 
 All API and HTML responses are no-store and carry restrictive CSP, no-referrer, nosniff and frame protection. Nginx and Gunicorn request logging is disabled for RuenDrop. Do not add request-body tracing, analytics, error-reporting SDKs, or proxy logs that could capture credentials. The root-only invite recovery file is the explicit exception to hash-only credential storage, required for `show-url`.
 

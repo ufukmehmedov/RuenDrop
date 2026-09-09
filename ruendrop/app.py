@@ -13,7 +13,7 @@ from werkzeug.exceptions import HTTPException
 
 ROOT = Path(__file__).parent
 TOKEN = re.compile(r'^[A-Za-z0-9_-]{43}$')
-MAX_PAYLOAD = 6 * 1024 * 1024
+MAX_PAYLOAD = 20 * 1024 * 1024
 TTL = 86400
 
 def digest(value):
@@ -112,7 +112,7 @@ def create_app(config=None):
     @app.after_request
     def headers(response):
         response.headers.update({
-            'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; img-src blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'",
+            'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'",
             'X-Content-Type-Options':'nosniff', 'Referrer-Policy':'no-referrer',
             'X-Frame-Options':'DENY', 'Cache-Control':'no-store',
             'Permissions-Policy':'camera=(), microphone=(), geolocation=()'})
@@ -131,6 +131,8 @@ def create_app(config=None):
 
     @app.get('/drop/assets/<name>')
     def asset(name):
+        if name in ('logo.png','favicon-32.png','icon-192.png'):
+            return make_response((ROOT/'static'/name).read_bytes(),200,{'Content-Type':'image/png'})
         if name not in ('app.js','photo.js','image.js','style.css','auth.js'):
             abort(404)
         return make_response((ROOT/'static'/name).read_text(),200,{'Content-Type':'text/css' if name.endswith('.css') else 'text/javascript'})

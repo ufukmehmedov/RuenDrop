@@ -4,7 +4,7 @@ Private, temporary photo sharing at `/drop/`. No accounts, external scripts or a
 
 A secret invite fragment is exchanged for a Secure, HttpOnly, SameSite=Strict session cookie and immediately removed from the visible URL. Upload controls are served only to authorized sessions. Each share link carries an independent AES-256-GCM key in its fragment; recipients need no upload authorization.
 
-The browser checks JPEG/PNG/WebP signatures and dimensions, actually decodes the image, applies orientation, draws onto a fresh canvas, resizes to at most 2000 pixels, and re-encodes JPEG. Only the encrypted result leaves the browser. Input is limited to 10 MiB and 40 million pixels; ciphertext to 6 MiB. No original filename or metadata is uploaded.
+The browser checks JPEG/PNG/WebP signatures and dimensions, actually decodes the image, applies orientation, draws onto a fresh canvas, resizes to at most 2000 pixels, and re-encodes JPEG. Only the encrypted result leaves the browser. Each source photo is limited to 10 MiB and 40 million pixels; each encrypted drop to 20 MiB. No original filename or metadata is uploaded.
 
 ## Runtime
 
@@ -26,7 +26,7 @@ sudo ruendrop rotate-url
 
 Rotation is manual only. It changes the invite and revokes every upload session in one database transaction, without changing photo records or keys. The application stores only the invite hash. To support `show-url`, a separate root-readable `0600` recovery file stores the current invite; the application user cannot read it. Run display commands in a private terminal, never a recorded/shared terminal.
 
-Every photo becomes inaccessible exactly 86,400 seconds after creation. A persistent systemd timer deletes expired ciphertext and rows every minute. Storage defaults: 1 GiB photo quota, 10,000 photos, 2 GiB minimum free disk reserve, 2 GiB ciphertext delivery budget per 24-hour window. At capacity, new uploads are refused. Requests, sessions, and limiter records are bounded.
+All photos in a drop become inaccessible exactly 86,400 seconds after creation. A persistent systemd timer deletes expired ciphertext and rows every minute. Storage defaults: 1 GiB photo quota, 10,000 drops, 2 GiB minimum free disk reserve, 2 GiB ciphertext delivery budget per 24-hour window. At capacity, new uploads are refused. Requests, sessions, and limiter records are bounded.
 
 ## Verification
 
@@ -39,3 +39,7 @@ RUENDROP_TEST_URL=https://photos.example.com RUENDROP_TEST_INVITE=/private/invit
 ```
 
 Browser checks cover authorization, invalid invites, non-images, byte/pixel limits, EXIF/GPS removal, orientation, resizing, encryption, separate-browser decryption, missing/wrong keys and request secrecy.
+
+Select or drag up to 10 photos to create one encrypted drop and one gallery share URL. Photos are processed sequentially and packed into one authenticated encrypted envelope; all expire together. Existing single-photo links remain supported.
+
+Branding uses the supplied Ruen IT Services `email-signature-logo-600-transparent.png`, `favicon-32x32.png`, and `favicon-192x192.png`, served locally without third-party resources.
