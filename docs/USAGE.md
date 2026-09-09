@@ -4,7 +4,7 @@ This file is the operational cheat sheet for a deployed RuenDrop instance.
 
 ## Normal use
 
-Open the private invite URL provided by the administrator. After authorization, use the upload page to select a photo and create a temporary encrypted share link.
+Open the private invite URL provided by the administrator. After authorization, use the upload page to select or drag up to 10 photos and create one temporary encrypted gallery share link (20 MiB encrypted total, 10 MiB per source photo).
 
 Do not publish the private invite URL. Photo share links are separate from the invite URL and expire automatically after 24 hours.
 

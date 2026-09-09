@@ -35,3 +35,5 @@ document.querySelector('#copy').addEventListener('click',async()=>{
   try {await navigator.clipboard.writeText(document.querySelector('#share').href); status.textContent='Link copied.';}
   catch {status.textContent='Select and copy the link above.';}
 });
+
+input.disabled=false;

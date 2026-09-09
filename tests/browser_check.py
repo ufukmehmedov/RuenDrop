@@ -33,6 +33,7 @@ def run():
         expect(page.locator('#status')).to_contain_text('invalid')
         page.goto(origin+'/drop/#'+token)
         page.wait_for_selector('#file',state='attached')
+        expect(page.locator('#file')).to_be_enabled()
         assert page.url==origin+'/drop/'
         page.locator('#file').set_input_files({'name':'fake.jpg','mimeType':'image/jpeg','buffer':b'not an image'})
         expect(page.locator('#status')).to_contain_text('valid JPEG')
