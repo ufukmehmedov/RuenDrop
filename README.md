@@ -15,7 +15,7 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
 
-See [deployment notes](docs/deployment.md) for installation and verification. No production configuration or secrets belong in this repository.
+See [deployment notes](docs/deployment.md) for installation and verification. For day-to-day commands and maintenance, see the [usage and administrator guide](docs/USAGE.md). No production configuration or secrets belong in this repository.
 
 ## Administrator commands
 
