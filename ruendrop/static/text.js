@@ -49,8 +49,7 @@ if ($('#copy')) $('#copy').addEventListener('click',async()=>{
   try { await navigator.clipboard.writeText($('#share').value); status('Link copied.'); }
   catch { $('#share').select(); status('Select and copy the link.'); }
 });
-if ($('#open')) $('#open').addEventListener('click',async()=>{
-  $('#open').disabled = true;
+async function openText() {
   try {
     const fragment = location.hash.slice(1);
     if (!/^[A-Za-z0-9_-]{43}$/.test(fragment)) throw Error('Encryption key is missing or invalid. Use the complete share link.');
@@ -69,9 +68,9 @@ if ($('#open')) $('#open').addEventListener('click',async()=>{
     $('#plaintext').value = envelope.text;
     $('#plaintext').hidden = false;
     $('#plain-label').hidden = false;
-    $('#open').hidden = true;
     status(envelope.mode==='burn' ? 'Opened. Server ciphertext has been deleted; this link cannot be opened again.' : 'Decrypted. This link expires 24 hours after creation.');
-  } catch(error) { status(error.message); $('#open').disabled = false; }
-});
+  } catch(error) { status(error.message); }
+}
+if ($('#plaintext')) openText();
 window.addEventListener('pagehide',()=>{ if ($('#plaintext')) { $('#plaintext').value=''; $('#plaintext').hidden=true; } });
 window.addEventListener('pageshow',event=>{ if(event.persisted) location.reload(); });

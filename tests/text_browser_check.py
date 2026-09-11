@@ -2,6 +2,7 @@
 import base64
 import json
 import os
+import time
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
@@ -11,6 +12,11 @@ def run():
     origin=os.environ.get('RUENDROP_TEST_URL','http://localhost:8787')
     token=Path(os.environ['RUENDROP_TEST_INVITE']).read_text().strip().split('#')[-1]
     records=[]; keys=[]; ids=[]; errors=[]
+    # Each no-store page loads shared branding assets. Pace synthetic navigation
+    # to respect production's existing 5 requests/second nginx limit.
+    def navigate(view, url):
+        if origin.startswith('https:'): time.sleep(2)
+        view.goto(url)
     with sync_playwright() as p:
         browser=p.chromium.launch()
         creator=browser.new_context(viewport={'width':390,'height':844})
@@ -25,6 +31,8 @@ def run():
         assert page.url==origin+'/text/'
         assert page.locator('#message').get_attribute('spellcheck')=='true'
         assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+        assert page.locator('.brand').evaluate('(e)=>e.complete && e.naturalWidth===600')
+        assert page.locator('.brand').get_attribute('src')=='/drop/assets/logo.png'
         print('PASS: invite authentication and mobile layout',flush=True)
         for mode,message in [('24h',SAMPLE*600),('burn',SAMPLE)]:
             print('Testing '+mode,flush=True)
@@ -40,18 +48,27 @@ def run():
             cipher=response.body()
             assert cipher.startswith(b'RT01') and SAMPLE.encode() not in cipher
             assert base64.urlsafe_b64decode(key+'=') not in cipher
-            reader=browser.new_context(); view=reader.new_page()
+            reader=browser.new_context(viewport={'width':390,'height':844}); view=reader.new_page()
             view.on('request',record); view.on('pageerror',lambda e:errors.append(str(e)))
-            view.goto(link.split('#')[0]); view.locator('#open').click()
+            navigate(view, link.split('#')[0])
             expect(view.locator('#status')).to_contain_text('missing')
-            view.goto(link.split('#')[0]+'#'+'A'*43); view.locator('#open').click()
+            view.goto('about:blank')
+            navigate(view, link.split('#')[0]+'#'+'A'*43)
             expect(view.locator('#status')).to_contain_text('Unable to decrypt')
             assert creator.request.get(origin+'/text/api/texts/'+tid).ok
-            view.goto(link); view.locator('#open').click()
-            expect(view.locator('#plaintext')).to_be_visible()
+            view.goto('about:blank')
+            navigate(view, link)
+            try:
+                expect(view.locator('#plaintext')).to_be_visible(timeout=15000)
+            except AssertionError:
+                print('Reader status: '+view.locator('#status').inner_text(),flush=True)
+                raise
+            assert view.locator('#open').count()==0
             assert view.locator('#plaintext').input_value()==message
+            assert view.evaluate('document.documentElement.scrollWidth<=innerWidth')
             assert view.locator('#plaintext').evaluate('(e)=>getComputedStyle(e).overflowY')=='auto'
-            view.reload(); view.locator('#open').click()
+            if origin.startswith('https:'): time.sleep(2)
+            view.reload()
             if mode=='burn':
                 expect(view.locator('#status')).to_contain_text('already opened')
                 assert creator.request.get(origin+'/text/api/texts/'+tid).status==404

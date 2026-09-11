@@ -8,12 +8,12 @@ No accounts, registration, analytics, external scripts, or external services.
 1. Run `sudo ruendrop text-show-url` in a private terminal to get the invite.
 2. Open that invite. Its fragment is immediately removed from the visible URL and exchanged for a Secure, HttpOnly, SameSite=Strict cookie scoped to `/text/`.
 3. Enter or paste multiline text, choose **24 hours** or **Burn after reading**, and press **Create secure link**.
-4. Copy the complete link, including `#KEY`, and send it privately. Recipients need no invite. They press **Open text** to decrypt.
+4. Copy the complete link, including `#KEY`, and send it privately. Recipients need no invite. Opening the URL automatically downloads and decrypts the message locally, then displays it without an extra button.
 
 The textarea supports Turkish, Bulgarian Cyrillic, English, line breaks, mobile screens, spellcheck and internal scrolling. The encrypted envelope is limited to 1 MiB; UTF-8 characters and JSON escaping count toward that limit.
 
 **24 hours:** repeat reads until exactly 86,400 seconds after creation.
-**Burn after reading:** successful decryption produces a receipt; the server atomically marks the text opened and clears its ciphertext before the browser displays it. Later opens fail. Missing/wrong keys do not burn the text. Unread burn links also expire after 24 hours. Expired ciphertext and opened metadata are removed by the existing minute cleanup timer; expiry is enforced on requests without waiting for cleanup.
+**Burn after reading:** automatic opening counts as the first read. Only after the complete encrypted payload has arrived, successful decryption produces a receipt; the server atomically marks the text opened and clears its ciphertext before the browser displays it. Later opens fail. Missing/wrong keys do not burn the text. Unread burn links also expire after 24 hours. Expired ciphertext and opened metadata are removed by the existing minute cleanup timer; expiry is enforced on requests without waiting for cleanup.
 
 ## Administrator commands
 
@@ -37,7 +37,7 @@ The key appears only in the share link fragment and browser memory, never in HTT
 
 SQLite stores ciphertext, random 256-bit ID, creation/expiry times, opened status, mode and receipt hash. It uses secure_delete; burn clears the ciphertext and receipt hash transactionally. No plaintext or key logging, social preview metadata, analytics or external dependencies are added. Existing CSP, no-store, noindex/nofollow/noarchive, no-referrer, CSRF, origin checks and bounded rate limiting apply. Text uploads have a separate 64 MiB quota and 1,000-record cap; delivery is bounded independently, and free-disk safeguards remain in place.
 
-Burn semantics require the supplied client: only one concurrent receipt acknowledgment succeeds, and only that reader displays the text. Anyone holding a full link can save decrypted text or fetched ciphertext; no service can erase recipient copies. A browser crash or lost acknowledgment response after the atomic burn can consume the link without displaying it. The server cannot independently attest browser decryption. Explicit opening prevents ordinary link previews from consuming a link. The service operator and HTTPS-delivered JavaScript must be trusted; compromised browsers, servers or shared links defeat confidentiality. Keep the runtime directory out of backups; secure deletion does not guarantee erasure from SSD snapshots or external backups.
+Burn semantics require the supplied client: only one concurrent receipt acknowledgment succeeds, and only that reader displays the text. Anyone holding a full link can save decrypted text or fetched ciphertext; no service can erase recipient copies. A browser crash or lost acknowledgment response after the atomic burn can consume the link without displaying it. The server cannot independently attest browser decryption. Ordinary HTTP previews receive no fragment key or message content. A browser or scanner that executes JavaScript with the complete fragment link can consume a burn link automatically. The service operator and HTTPS-delivered JavaScript must be trusted; compromised browsers, servers or shared links defeat confidentiality. Keep the runtime directory out of backups; secure deletion does not guarantee erasure from SSD snapshots or external backups.
 
 ## Deployment and tests
 
@@ -50,3 +50,5 @@ RUENDROP_TEST_INVITE=/private/invite-url .venv/bin/python tests/text_browser_che
 ```
 
 Tests exercise Turkish/Bulgarian round trips, long multiline text, browser request secrecy, wrong keys, repeated 24-hour reads, burn and second-open rejection. Backend tests cover expiry at the boundary, cleanup, storage contents, concurrent burn, access controls and admin commands, alongside the existing RuenDrop regression suite.
+
+RuenText reuses RuenDrop’s local stylesheet, 300-pixel logo treatment, and supplied `email-signature-logo-600-transparent.png`, `favicon-32x32.png`, and `favicon-192x192.png` assets from the Ruen IT Services Logos and Banners package. The read-only reader preserves Unicode and line breaks with internal scrolling; it disables spellcheck.
