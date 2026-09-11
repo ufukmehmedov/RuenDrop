@@ -14,3 +14,5 @@ Keep `/var/lib/ruendrop` out of backup jobs. Store production backups/configurat
 The default service has 192 MiB memory and half a CPU ceiling. Two synchronous Gunicorn workers have a 45-second request timeout. Data files are mode `0600`, directories `0700`, and systemd marks the data path non-executable. The source and venv are not writable by the service user.
 
 For a bootstrap deployment with no prior HTTPS host, `deploy/ruendrop-enable-https` can be installed root-owned in `/usr/local/sbin/` after reviewing the pending virtual-host configuration. Once upstream TCP 80/443 access is available, it backs up configuration, obtains a certificate, validates and enables the staged host, reloads Nginx, and installs a validated certificate-renewal reload hook. It never rotates the invite.
+
+For RuenText, also install `deploy/nginx-text.conf` as `/etc/nginx/snippets/ruentext.conf` and include it in the same HTTPS server block. The shared source update adds its SQLite table automatically and extends the existing cleanup timer. No new service, port, certificate or invite is required. See [RuenText](RUENTEXT.md).

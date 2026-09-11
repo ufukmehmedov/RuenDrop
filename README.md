@@ -43,3 +43,9 @@ Browser checks cover authorization, invalid invites, non-images, byte/pixel limi
 Select or drag up to 10 photos to create one encrypted drop and one gallery share URL. Photos are processed sequentially and packed into one authenticated encrypted envelope; all expire together. Existing single-photo links remain supported.
 
 Branding uses the supplied Ruen IT Services `email-signature-logo-600-transparent.png`, `favicon-32x32.png`, and `favicon-192x192.png`, served locally without third-party resources.
+
+## RuenText
+
+Private client-side AES-256-GCM text sharing is available at `/text/`, using the existing private invite. Share UTF-8 multiline text for **24 hours** or **Burn after reading**. Encryption keys stay in share URL fragments; the server stores ciphertext only. No new backend port or service is required.
+
+Use `sudo ruendrop text-show-url`, `sudo ruendrop text-list` and `sudo ruendrop text-revoke TEXT_ID`. See [RuenText usage, security and deployment](docs/RUENTEXT.md) for all commands, limits and burn semantics.

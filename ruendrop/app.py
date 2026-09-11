@@ -34,6 +34,11 @@ def initialize(root):
         CREATE TABLE IF NOT EXISTS sessions (hash TEXT PRIMARY KEY, csrf TEXT NOT NULL, expires REAL NOT NULL);
         CREATE TABLE IF NOT EXISTS photos (id TEXT PRIMARY KEY, size INTEGER NOT NULL, created REAL NOT NULL, expires REAL NOT NULL);
         CREATE TABLE IF NOT EXISTS limits (bucket TEXT PRIMARY KEY, count INTEGER NOT NULL, expires REAL NOT NULL);
+        CREATE TABLE IF NOT EXISTS texts (
+            id TEXT PRIMARY KEY, ciphertext BLOB, created REAL NOT NULL,
+            expires REAL NOT NULL, opened INTEGER NOT NULL DEFAULT 0,
+            mode TEXT NOT NULL, receipt_hash TEXT NOT NULL);
+        CREATE INDEX IF NOT EXISTS text_expiry ON texts(expires);
         CREATE INDEX IF NOT EXISTS photo_expiry ON photos(expires);
         ''')
 
@@ -44,6 +49,7 @@ def cleanup(root):
         for row in db.execute('SELECT id FROM photos WHERE expires<=?', (now,)):
             (root / 'data' / row['id']).unlink(missing_ok=True)
         db.execute('DELETE FROM photos WHERE expires<=?', (now,))
+        db.execute('DELETE FROM texts WHERE expires<=?', (now,))
         db.execute('DELETE FROM sessions WHERE expires<=?', (now,))
         db.execute('DELETE FROM limits WHERE expires<=?', (now,))
         known = {r[0] for r in db.execute('SELECT id FROM photos')}
@@ -56,7 +62,7 @@ def create_app(config=None):
     app.config.update(DATA_ROOT=os.environ.get('RUENDROP_DATA', '/var/lib/ruendrop'),
                       ORIGIN=os.environ.get('RUENDROP_ORIGIN', 'https://novachat.ruenitservices.com'),
                       MAX_CONTENT_LENGTH=MAX_PAYLOAD, QUOTA=1024**3, MIN_FREE=2*1024**3,
-                      MAX_PHOTOS=10000, DAILY_EGRESS=2*1024**3)
+                      MAX_PHOTOS=10000, TEXT_QUOTA=64*1024**2, MAX_TEXTS=1000, DAILY_EGRESS=2*1024**3)
     if config:
         app.config.update(config)
     root = Path(app.config['DATA_ROOT'])
@@ -91,7 +97,7 @@ def create_app(config=None):
         c.commit()
 
     def session():
-        raw = request.cookies.get('__Secure-ruendrop', '')
+        raw = request.cookies.get('__Secure-ruentext' if request.path.startswith('/text/') else '__Secure-ruendrop', '')
         return db().execute('SELECT * FROM sessions WHERE hash=? AND expires>?',
                             (digest(raw), time.time())).fetchone() if TOKEN.fullmatch(raw) else None
 
@@ -102,7 +108,7 @@ def create_app(config=None):
         if request.method == 'POST':
             if request.headers.get('Origin') != app.config['ORIGIN']:
                 abort(403)
-            if request.path != '/drop/api/auth':
+            if request.path not in ('/drop/api/auth', '/text/api/auth') and not (request.path.startswith('/text/api/texts/') and request.path.endswith('/opened')):
                 g.auth = session()
                 if not g.auth:
                     abort(401)
@@ -138,6 +144,7 @@ def create_app(config=None):
             abort(404)
         return make_response((ROOT/'static'/name).read_text(),200,{'Content-Type':'text/css' if name.endswith('.css') else 'text/javascript'})
 
+    @app.post('/text/api/auth')
     @app.post('/drop/api/auth')
     def auth():
         limit('auth:'+digest(request.headers.get('X-Real-IP',request.remote_addr or '')),10,600)
@@ -163,9 +170,11 @@ def create_app(config=None):
         c.execute('INSERT INTO sessions VALUES (?,?,?)',(digest(raw),secrets.token_urlsafe(32),time.time()+TTL))
         c.commit()
         response = jsonify(ok=True)
-        response.set_cookie('__Secure-ruendrop',raw,max_age=TTL,secure=True,httponly=True,samesite='Strict',path='/drop/')
+        is_text = request.path.startswith('/text/')
+        response.set_cookie('__Secure-ruentext' if is_text else '__Secure-ruendrop',raw,max_age=TTL,secure=True,httponly=True,samesite='Strict',path='/text/' if is_text else '/drop/')
         return response
 
+    @app.get('/text/api/session')
     @app.get('/drop/api/session')
     def get_session():
         row = session()
@@ -237,4 +246,6 @@ def create_app(config=None):
         if row['expires']<=time.time():
             abort(404)
         return make_response(payload,200,{'Content-Type':'application/octet-stream'})
+    from .text import register_text
+    register_text(app, db, session, limit, page, root)
     return app
